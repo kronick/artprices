@@ -4,6 +4,7 @@ import urllib2
 import json
 import re
 import os
+import codecs
 
 pwd = os.path.dirname(os.path.realpath(__file__))
 
@@ -15,26 +16,31 @@ class Work:
     self.artist = artist
     self.title = title
     self.price = self.parsePrice(priceString)
+
+    self.downloadImage(image, "large")
+    self.downloadImage(image, "medium")
+    self.downloadImage(image, "square")
+    self.downloadImage(image, "small")
+    self.downloadImage(image, "larger")
+    #self.downloadImage(image, "normalized")
+
+    self.image = self.relativeImagePath("medium")
+
+  def localImagePath(self, version="large"):
+    return pwd + "/images/%s-%s.jpg" % (self.id, version)
+  def relativeImagePath(self, version="large"):
+    return "images/%s-%s.jpg" % (self.id, version)
+
+  def downloadImage(self, image, version="large"):
     try:
-      with open(self.localImagePath()) as f: pass
+      with open(self.localImagePath(version)) as f: pass
     except IOError as e:
-      print "Must download image"
-      self.downloadImage(image)
-
-    self.image = self.relativeImagePath()
-
-  def localImagePath(self):
-    return pwd + "/images/%s.jpg" % self.id
-  def relativeImagePath(self):
-    return "images/%s.jpg" % self.id
-
-  def downloadImage(self, image):
-    image = image.replace(":version", "large")
-    print "Downloading " + image
-    f = authenticatedRequest(image)
-    out = open(self.localImagePath(), 'wb')
-    out.write(f.read())
-    out.close()
+      image = image.replace(":version", version)
+      print "Downloading %s version of %s:" % (version, image)
+      f = authenticatedRequest(image)
+      out = open(self.localImagePath(version), 'wb')
+      out.write(f.read())
+      out.close()
 
     return self.relativeImagePath()
 
@@ -116,8 +122,25 @@ while not done:
 # Sort by price
 works.sort(key=lambda x: x.price, reverse=True)
 
+html = codecs.open(pwd + "/index.html", encoding="utf-8", mode="w")
+
+html.write("""<html>
+  <head>
+  <style>
+  .work {
+    margin-bottom: 2em;
+    font-weight: bold;
+  }
+  </style>
+  <body>
+    <div align='center'>
+          """)
+
 for work in works:
+  html.write("<div class='work'><img src='%s'><br />$%i</div>\n\n" % (work.image, work.price))
   print "%s by %s ($%i)" % (work.title, work.artist, work.price)
+
+html.write("</div></body></html>")
 
 
 
